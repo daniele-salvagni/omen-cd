@@ -27,18 +27,34 @@ func main() {
 	}
 }
 
+const usage = `Usage:
+  omen [--config PATH] [--dry-run] [--apply-all]
+  omen init [host|spec]
+  omen unit [service|timer]
+  omen version
+
+Bare invocation performs one sync using the given config.
+`
+
 // dispatch routes a leading subcommand token if present; anything else is
 // treated as a sync invocation with flags.
 func dispatch(args []string) error {
+	if len(args) > 0 {
+		switch args[0] {
+		case "version", "-version", "--version":
+			fmt.Println(versionString())
+			return nil
+		case "help", "-h", "-help", "--help":
+			fmt.Print(usage)
+			return nil
+		}
+	}
 	if len(args) > 0 && !strings.HasPrefix(args[0], "-") {
 		switch args[0] {
 		case "init":
 			return initCmd(args[1:])
 		case "unit":
 			return unitCmd(args[1:])
-		case "version":
-			fmt.Println(versionString())
-			return nil
 		default:
 			return fmt.Errorf("unknown command %q", args[0])
 		}
@@ -48,6 +64,7 @@ func dispatch(args []string) error {
 
 func syncCmd(args []string) error {
 	fs := flag.NewFlagSet("omen", flag.ContinueOnError)
+	fs.Usage = func() { fmt.Fprint(os.Stderr, usage) }
 	cfg := fs.String("config", "/etc/omen/omen.yaml", "path to host config")
 	dryRun := fs.Bool("dry-run", false, "report what would happen; write nothing")
 	applyAll := fs.Bool("apply-all", false, "run all matching rules against HEAD")
