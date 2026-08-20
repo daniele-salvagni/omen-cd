@@ -3,7 +3,8 @@
 // Usage:
 //
 //	omen [--config PATH] [--dry-run] [--apply-all]
-//	omen init [--spec]
+//	omen init [host|spec]
+//	omen unit [service|timer]
 //	omen version
 package main
 
@@ -26,13 +27,15 @@ func main() {
 	}
 }
 
-// dispatch routes a leading subcommand token (init, version) if present;
-// anything else is treated as a sync invocation with flags.
+// dispatch routes a leading subcommand token if present; anything else is
+// treated as a sync invocation with flags.
 func dispatch(args []string) error {
 	if len(args) > 0 && !strings.HasPrefix(args[0], "-") {
 		switch args[0] {
 		case "init":
 			return initCmd(args[1:])
+		case "unit":
+			return unitCmd(args[1:])
 		case "version":
 			fmt.Println(versionString())
 			return nil
@@ -64,16 +67,35 @@ func syncCmd(args []string) error {
 	})
 }
 
+// initCmd prints a starter template. Defaults to host if no argument given.
 func initCmd(args []string) error {
-	fs := flag.NewFlagSet("omen init", flag.ContinueOnError)
-	spec := fs.Bool("spec", false, "print a starter sync spec instead of a host config")
-	if err := fs.Parse(args); err != nil {
-		return err
+	what := "host"
+	if len(args) > 0 {
+		what = args[0]
 	}
-	if *spec {
-		fmt.Print(omen.SpecTemplate)
-	} else {
+	switch what {
+	case "host":
 		fmt.Print(omen.HostTemplate)
+	case "spec":
+		fmt.Print(omen.SpecTemplate)
+	default:
+		return fmt.Errorf("unknown template %q (want host or spec)", what)
+	}
+	return nil
+}
+
+// unitCmd prints a systemd unit file.
+func unitCmd(args []string) error {
+	if len(args) == 0 {
+		return fmt.Errorf("usage: omen unit [service|timer]")
+	}
+	switch args[0] {
+	case "service":
+		fmt.Print(omen.ServiceUnit)
+	case "timer":
+		fmt.Print(omen.TimerUnit)
+	default:
+		return fmt.Errorf("unknown unit %q (want service or timer)", args[0])
 	}
 	return nil
 }
