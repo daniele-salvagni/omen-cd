@@ -115,7 +115,7 @@ Retention is controlled by journald (see `/etc/systemd/journald.conf`).
 ```
 omen [--config PATH] [--env-file PATH] [--dry-run] [--apply-all]
 omen init [host|spec]
-omen unit [service|timer]
+omen unit [service|timer] [--user NAME]
 omen version
 ```
 
@@ -124,6 +124,8 @@ omen version
 - `--dry-run` prints the pending diff and matched rules, writes and runs
   nothing.
 - `--apply-all` treats every tracked file as changed for one invocation.
+- `--user NAME` on `omen unit service` injects `User=NAME` and `Group=NAME`
+  under `[Service]` so the service runs as that user instead of root.
 
 ## Behavior
 
