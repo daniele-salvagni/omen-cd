@@ -6,5 +6,4 @@ Wants=network-online.target
 [Service]
 Type=oneshot
 ExecStart=/usr/local/bin/omen --config /etc/omen/%i.yaml
-EnvironmentFile=-/etc/omen/%i.env
 SyslogIdentifier=omen-%i

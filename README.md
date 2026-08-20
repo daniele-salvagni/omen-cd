@@ -17,7 +17,8 @@ Prebuilt binaries for `linux/amd64`, `linux/arm64`, and `linux/arm/v7`:
 
 ```sh
 ARCH=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/;s/armv7l/armv7/')
-curl -fsSL https://github.com/daniele-salvagni/omen-cd/releases/latest/download/omen-linux-${ARCH} | sudo install -m 755 /dev/stdin /usr/local/bin/omen
+curl -fsSL -o /tmp/omen https://github.com/daniele-salvagni/omen-cd/releases/latest/download/omen-linux-${ARCH}
+sudo install -m 755 /tmp/omen /usr/local/bin/omen && rm /tmp/omen
 ```
 
 Or from source (requires Go):
@@ -92,7 +93,8 @@ Every rule whose globs match a changed file runs, in order. `notify` runs once
 per successful deploy with `OMEN_SHA`, `OMEN_SHORT`, `OMEN_STATUS`, and
 `OMEN_INSTANCE` set.
 
-Secrets go in `/etc/omen/<instance>.env`, loaded by systemd, `chmod 600`.
+Secrets go in `/etc/omen/<instance>.env` (same name as the config, `.env`
+suffix). omen loads it automatically when it exists. `chmod 600`, never in git.
 
 Globs use [doublestar](https://github.com/bmatcuk/doublestar) syntax, so `**`
 spans directory boundaries.
@@ -106,12 +108,14 @@ spans directory boundaries.
 ## Commands
 
 ```
-omen [--config PATH] [--dry-run] [--apply-all]
+omen [--config PATH] [--env-file PATH] [--dry-run] [--apply-all]
 omen init [host|spec]
 omen unit [service|timer]
 omen version
 ```
 
+- `--env-file` overrides the default env file (which is derived from `--config`
+  by swapping the extension to `.env`).
 - `--dry-run` prints the pending diff and matched rules, writes and runs
   nothing.
 - `--apply-all` treats every tracked file as changed for one invocation.

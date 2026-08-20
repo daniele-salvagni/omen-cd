@@ -28,12 +28,13 @@ func main() {
 }
 
 const usage = `Usage:
-  omen [--config PATH] [--dry-run] [--apply-all]
+  omen [--config PATH] [--env-file PATH] [--dry-run] [--apply-all]
   omen init [host|spec]
   omen unit [service|timer]
   omen version
 
-Bare invocation performs one sync using the given config.
+Bare invocation performs one sync using the given config. If an env file
+sits next to the config (same name, .env suffix), it is loaded automatically.
 `
 
 // dispatch routes a leading subcommand token if present; anything else is
@@ -66,11 +67,26 @@ func syncCmd(args []string) error {
 	fs := flag.NewFlagSet("omen", flag.ContinueOnError)
 	fs.Usage = func() { fmt.Fprint(os.Stderr, usage) }
 	cfg := fs.String("config", "/etc/omen/omen.yaml", "path to host config")
+	envFile := fs.String("env-file", "", "path to env file (KEY=VALUE); overrides the default derived from --config")
 	dryRun := fs.Bool("dry-run", false, "report what would happen; write nothing")
 	applyAll := fs.Bool("apply-all", false, "run all matching rules against HEAD")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
+
+	// Explicit --env-file is strict; the convention path next to --config is
+	// silently OK if missing.
+	if *envFile != "" {
+		if err := omen.LoadEnvFile(*envFile, true); err != nil {
+			return err
+		}
+	} else {
+		convention := strings.TrimSuffix(*cfg, filepath.Ext(*cfg)) + ".env"
+		if err := omen.LoadEnvFile(convention, false); err != nil {
+			return err
+		}
+	}
+
 	h, err := omen.LoadHost(*cfg)
 	if err != nil {
 		return err
