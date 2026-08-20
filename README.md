@@ -103,7 +103,12 @@ spans directory boundaries.
 
 - `systemctl status omen@main.timer`: next run, last activation.
 - `systemctl start omen@main.service`: trigger a sync now.
-- `journalctl -u omen@main.service -f`: tail deploy logs.
+- `journalctl -u omen@main.service -f`: tail deploy logs live.
+- `journalctl -u omen@main.service --since '1 hour ago'`: past runs
+  (window-scoped).
+- `journalctl -u omen@main.service --grep failed`: find failed runs.
+
+Retention is controlled by journald (see `/etc/systemd/journald.conf`).
 
 ## Commands
 
