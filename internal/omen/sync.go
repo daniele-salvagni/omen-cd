@@ -98,7 +98,7 @@ func Sync(h *Host, opts Options) error {
 		return fmt.Errorf("load spec: %w", err)
 	}
 
-	opts.Log.Printf("commit %s -> %s (%d files)", short(prev), short(head), len(changed))
+	opts.Log.Printf("commit %s -> %s (%d %s)", short(prev), short(head), len(changed), plural(len(changed), "file", "files"))
 
 	ran, failed, err := runRules(spec.Rules, changed, h.Dir, opts)
 	if err != nil {
@@ -120,7 +120,7 @@ func Sync(h *Host, opts Options) error {
 	if len(ran) > 0 {
 		notify(spec, h.Dir, opts.Instance, head, "deployed: "+strings.Join(ran, ", "), opts.Out, opts.Log)
 	} else {
-		opts.Log.Printf("no rules matched (%d changed files)", len(changed))
+		opts.Log.Printf("no rules matched (%d changed %s)", len(changed), plural(len(changed), "file", "files"))
 	}
 	return nil
 }
@@ -200,6 +200,13 @@ func ruleName(r Rule) string {
 		return r.Name
 	}
 	return r.Run
+}
+
+func plural(n int, singular, pl string) string {
+	if n == 1 {
+		return singular
+	}
+	return pl
 }
 
 func short(sha string) string {
