@@ -13,19 +13,13 @@ pull --> match --> run --> notify
 
 ## Install
 
-Prebuilt binaries for `linux/amd64`, `linux/arm64`, and `linux/arm/v7`:
-
 ```sh
 ARCH=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/;s/armv7l/armv7/')
 curl -fsSL -o /tmp/omen https://github.com/daniele-salvagni/omen-cd/releases/latest/download/omen-linux-${ARCH}
 sudo install -m 755 /tmp/omen /usr/local/bin/omen && rm /tmp/omen
 ```
 
-Or from source (requires Go):
-
-```sh
-go install github.com/daniele-salvagni/omen-cd/cmd/omen@latest
-```
+From source: `go install github.com/daniele-salvagni/omen-cd/cmd/omen@latest`
 
 ## Quickstart
 
@@ -49,27 +43,20 @@ sudo systemctl enable --now omen@main.timer
 sudo omen --config /etc/omen/main.yaml --apply-all
 ```
 
-`git push` handles every deploy after that.
+Then `git push` handles every deploy. omen is a one-shot binary; any scheduler
+works, systemd is the default.
 
-omen is a one-shot binary; any scheduler works. systemd is the default because
-it captures logs and status cleanly.
-
-## Configure
-
-Two files. `omen init host` and `omen init spec` print starters.
+## Configuration
 
 **Host config** at `/etc/omen/<instance>.yaml`:
 
 ```yaml
-repo: git@github.com:you/infra.git
-dir: /srv/infra
-# branch: main                    # default
-# source: .omen.yaml              # spec path inside the repo
+repo: git@github.com:you/infra.git # required
+dir: /srv/infra # required
+# branch: main                        # default
+# source: .omen.yaml                  # in-repo spec path
 # ssh_key: /etc/omen/id_ed25519
 ```
-
-`omen@<name>.timer` reads `/etc/omen/<name>.yaml`. Enable multiple timers
-(`omen@web.timer`, `omen@db.timer`) to run multiple instances on one host.
 
 **Sync spec** in the repo (default `.omen.yaml` at the root):
 
@@ -89,26 +76,15 @@ rules:
     run: install -m 644 cron.d/* /etc/cron.d/
 ```
 
-Every rule whose globs match a changed file runs, in order. `notify` runs once
-per successful deploy with `OMEN_SHA`, `OMEN_SHORT`, `OMEN_STATUS`, and
-`OMEN_INSTANCE` set.
-
-Secrets go in `/etc/omen/<instance>.env` (same name as the config, `.env`
-suffix). omen loads it automatically when it exists. `chmod 600`, never in git.
-
-Globs use [doublestar](https://github.com/bmatcuk/doublestar) syntax, so `**`
-spans directory boundaries.
-
-## Operating
-
-- `systemctl status omen@main.timer`: next run, last activation.
-- `systemctl start omen@main.service`: trigger a sync now.
-- `journalctl -u omen@main.service -f`: tail deploy logs live.
-- `journalctl -u omen@main.service --since '1 hour ago'`: past runs
-  (window-scoped).
-- `journalctl -u omen@main.service --grep failed`: find failed runs.
-
-Retention is controlled by journald (see `/etc/systemd/journald.conf`).
+- **Rules** fire in order for each changed file matching `paths`.
+- **Notify** runs once after a successful deploy. Env: `OMEN_SHA`, `OMEN_SHORT`,
+  `OMEN_STATUS`, `OMEN_INSTANCE`.
+- **Globs** use [doublestar](https://github.com/bmatcuk/doublestar) (`**`
+  crosses directory boundaries).
+- **Secrets** live in `/etc/omen/<instance>.env`. Auto-loaded, `chmod 600`,
+  never in git.
+- **Multi-instance**: `omen@web.timer` reads `/etc/omen/web.yaml`. Enable more
+  timers to run multiple repos or hosts on one machine.
 
 ## Commands
 
@@ -119,26 +95,35 @@ omen unit [service|timer] [--user NAME]
 omen version
 ```
 
-- `--env-file` overrides the default env file (which is derived from `--config`
-  by swapping the extension to `.env`).
-- `--dry-run` prints the pending diff and matched rules, writes and runs
-  nothing.
-- `--apply-all` treats every tracked file as changed for one invocation.
+- `--dry-run` prints the pending diff and matched rules, no execution.
+- `--apply-all` forces every rule against HEAD (initial deploy, redeploy).
+- `--env-file` overrides the auto-derived env file.
 - `--user NAME` on `omen unit service` injects `User=NAME` and `Group=NAME`
-  under `[Service]` so the service runs as that user instead of root.
+  under `[Service]`.
+
+## Operating
+
+```sh
+systemctl status omen@main.timer                       # next run, last activation
+systemctl start omen@main.service                      # sync now
+journalctl -u omen@main.service -f                     # tail live
+journalctl -u omen@main.service --since '1 hour ago'   # past runs
+journalctl -u omen@main.service --grep failed          # find failures
+```
+
+Retention is journald's (`/etc/systemd/journald.conf`).
 
 ## Behavior
 
-- First run with no state records HEAD and executes no rules, so nothing runs
-  unexpectedly on install. `--apply-all` forces a full initial deploy.
-- Fast-forward only. Divergence from the remote aborts the sync loudly.
-- State (the last applied sha) advances only after every matching rule succeeds.
-  A mid-batch failure leaves state at the previous sha; the next tick retries
-  the same diff. Rules must be idempotent.
-- `notify` fires once with `OMEN_STATUS=deployed: <names>` on success or
-  `failed: <rule>` on error.
-- A failing `notify` is logged and ignored.
-- One flock per instance prevents timer and manual runs from colliding.
+- **First run with no state** records HEAD and executes no rules. `--apply-all`
+  forces a full initial deploy.
+- **Fast-forward only.** Divergence from the remote aborts the sync loudly.
+- **State advances only on batch success.** A mid-batch failure retries the same
+  diff on the next tick. Rules must be idempotent.
+- **Notify fires once per run.** `deployed: <names>` on success,
+  `failed:
+  <rule>` on error. Notify failures are logged, not fatal.
+- **One flock per instance** prevents timer and manual runs from colliding.
 
 ## License
 
