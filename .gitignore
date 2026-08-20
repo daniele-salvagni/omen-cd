@@ -1,0 +1,14 @@
+# Binaries
+/omen
+/dist/
+
+# Config
+omen.yaml
+omen.env
+
+# OS
+.DS_Store
+
+# Test/profiling
+*.out
+*.prof
