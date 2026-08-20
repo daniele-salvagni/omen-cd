@@ -51,7 +51,7 @@ func (g *Git) Fetch(branch string) error {
 }
 
 func (g *Git) MergeFF(branch string) error {
-	return g.exec(g.Dir, "merge", "--ff-only", "origin/"+branch)
+	return g.exec(g.Dir, "merge", "--ff-only", "--quiet", "origin/"+branch)
 }
 
 func (g *Git) RevParse(ref string) (string, error) {
