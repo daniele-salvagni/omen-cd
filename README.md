@@ -75,7 +75,7 @@ dir: /srv/infra
 
 ```yaml
 notify: |
-  curl -fsS "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+  curl -fsS -o /dev/null "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
     -d chat_id="${TELEGRAM_CHAT_ID}" \
     -d text="omen ${OMEN_STATUS} ${OMEN_SHORT}"
 
