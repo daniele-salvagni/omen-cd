@@ -34,7 +34,7 @@ sudo mkdir -p /etc/omen
 omen init host | sudo tee /etc/omen/main.yaml
 sudo $EDITOR /etc/omen/main.yaml   # set repo and dir
 
-# 2. Sync spec, committed to your repo
+# 2. Sync spec, in your repo root
 omen init spec > .omen.yaml
 $EDITOR .omen.yaml                 # define rules
 git add .omen.yaml && git commit -m 'omen spec' && git push
@@ -50,8 +50,8 @@ sudo omen --config /etc/omen/main.yaml --apply-all
 
 `git push` handles every deploy after that.
 
-omen is a one-shot binary. cron, launchd, or any scheduler works; systemd is the
-default because it captures logs and status cleanly.
+omen is a one-shot binary; any scheduler works. systemd is the default because
+it captures logs and status cleanly.
 
 ## Configure
 
@@ -67,9 +67,8 @@ dir: /srv/infra
 # ssh_key: /etc/omen/id_ed25519
 ```
 
-The instance name after `@` in the systemd unit picks the config:
-`omen@main.timer` reads `/etc/omen/main.yaml`. Enable more timers
-(`omen@web.timer`, `omen@db.timer`) for multiple instances on one host.
+`omen@<name>.timer` reads `/etc/omen/<name>.yaml`. Enable multiple timers
+(`omen@web.timer`, `omen@db.timer`) to run multiple instances on one host.
 
 **Sync spec** in the repo (default `.omen.yaml` at the root):
 
@@ -113,7 +112,6 @@ omen unit [service|timer]
 omen version
 ```
 
-- `--config` defaults to `/etc/omen/omen.yaml`.
 - `--dry-run` prints the pending diff and matched rules, writes and runs
   nothing.
 - `--apply-all` treats every tracked file as changed for one invocation.
