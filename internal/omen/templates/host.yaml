@@ -1,0 +1,9 @@
+# omen host config
+# Lives on the host, e.g. /etc/omen/main.yaml. Never committed.
+
+repo: git@github.com:you/repo.git
+dir: /srv/repo
+
+# branch: main                    # default
+# source: .omen.yaml              # spec path inside the repo
+# ssh_key: /etc/omen/id_ed25519

@@ -1,0 +1,14 @@
+# omen sync spec
+# Lives in the repo at .omen.yaml (or the path set by 'source' in host config).
+
+# Optional. Runs once after each successful non-empty deploy.
+# Env: OMEN_SHA, OMEN_SHORT, OMEN_STATUS, OMEN_INSTANCE.
+# notify: |
+#   curl -fsS "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+#     -d chat_id="${TELEGRAM_CHAT_ID}" \
+#     -d text="omen ${OMEN_STATUS} ${OMEN_SHORT}"
+
+rules:
+  - name: example
+    paths: ["stacks/example/**"]
+    run: cd stacks/example && docker compose up -d
