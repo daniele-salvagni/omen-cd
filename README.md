@@ -31,7 +31,7 @@ omen init host --repo git@github.com:you/infra.git --dir /srv/infra \
 
 # 2. Sync spec, in your repo root
 omen init spec > .omen.yaml
-$EDITOR .omen.yaml                 # define rules
+${EDITOR:-vi} .omen.yaml           # define rules
 git add .omen.yaml && git commit -m 'omen spec' && git push
 
 # 3. Systemd
