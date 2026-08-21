@@ -111,7 +111,7 @@ omen version
 
 ## Operating
 
-Substitute `<name>` with your instance (e.g. `main`, `rec220`).
+Substitute `<name>` with your instance name (e.g. `main`).
 
 ```sh
 systemctl list-timers 'omen-*.timer'              # every omen instance on this host
