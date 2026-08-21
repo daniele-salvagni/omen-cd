@@ -1,0 +1,13 @@
+[Unit]
+Description=omen sync ({{.Name}})
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/omen --config {{.ConfigPath}}
+SyslogIdentifier=omen-{{.Name}}
+{{- if .User}}
+User={{.User}}
+Group={{.User}}
+{{- end}}

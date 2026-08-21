@@ -1,0 +1,11 @@
+[Unit]
+Description=omen sync timer ({{.Name}})
+
+[Timer]
+Unit=omen-{{.Name}}.service
+OnBootSec=30s
+OnUnitActiveSec={{.Interval}}
+AccuracySec=5s
+
+[Install]
+WantedBy=timers.target

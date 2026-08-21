@@ -2,9 +2,11 @@
 //
 // Usage:
 //
-//	omen [--config PATH] [--dry-run] [--apply-all]
-//	omen init [host|spec]
-//	omen unit [service|timer]
+//	omen [--config PATH] [--env-file PATH] [--dry-run] [--apply-all]
+//	omen init host [flags]
+//	omen init spec
+//	omen unit service --config PATH
+//	omen unit timer   --config PATH
 //	omen version
 package main
 
@@ -20,22 +22,24 @@ import (
 	"github.com/daniele-salvagni/omen-cd/internal/omen"
 )
 
+const usage = `Usage:
+  omen [--config PATH] [--env-file PATH] [--dry-run] [--apply-all]
+  omen init host [flags]
+  omen init spec
+  omen unit service --config PATH
+  omen unit timer   --config PATH
+  omen version
+
+Bare invocation performs one sync using the given config. If an env file
+sits next to the config (same name, .env suffix), it is loaded automatically.
+`
+
 func main() {
 	if err := dispatch(os.Args[1:]); err != nil {
 		fmt.Fprintln(os.Stderr, "omen:", err)
 		os.Exit(1)
 	}
 }
-
-const usage = `Usage:
-  omen [--config PATH] [--env-file PATH] [--dry-run] [--apply-all]
-  omen init [host|spec]
-  omen unit [service|timer] [--user NAME]
-  omen version
-
-Bare invocation performs one sync using the given config. If an env file
-sits next to the config (same name, .env suffix), it is loaded automatically.
-`
 
 // dispatch routes a leading subcommand token if present; anything else is
 // treated as a sync invocation with flags.
@@ -74,8 +78,6 @@ func syncCmd(args []string) error {
 		return err
 	}
 
-	// Explicit --env-file is strict; the convention path next to --config is
-	// silently OK if missing.
 	if *envFile != "" {
 		if err := omen.LoadEnvFile(*envFile, true); err != nil {
 			return err
@@ -100,59 +102,77 @@ func syncCmd(args []string) error {
 	})
 }
 
-// initCmd prints a starter template. Defaults to host if no argument given.
+// initCmd handles `omen init host` and `omen init spec`.
 func initCmd(args []string) error {
-	what := "host"
-	if len(args) > 0 {
-		what = args[0]
+	if len(args) == 0 {
+		return fmt.Errorf("usage: omen init [host|spec]")
 	}
-	switch what {
+	sub, args := args[0], args[1:]
+
+	switch sub {
 	case "host":
-		fmt.Print(omen.HostTemplate)
+		return initHost(args)
 	case "spec":
 		fmt.Print(omen.SpecTemplate)
+		return nil
 	default:
-		return fmt.Errorf("unknown template %q (want host or spec)", what)
+		return fmt.Errorf("unknown template %q (want host or spec)", sub)
 	}
+}
+
+func initHost(args []string) error {
+	fs := flag.NewFlagSet("omen init host", flag.ContinueOnError)
+	var h omen.HostInit
+	fs.StringVar(&h.Repo, "repo", "", "git repo URL")
+	fs.StringVar(&h.Dir, "dir", "", "local checkout path")
+	fs.StringVar(&h.Branch, "branch", "", "branch to track (default: main)")
+	fs.StringVar(&h.Source, "source", "", "in-repo spec path (default: .omen.yaml)")
+	fs.StringVar(&h.User, "user", "", "run service as this user (default: root)")
+	fs.StringVar(&h.SSHKey, "ssh-key", "", "SSH private key path")
+	fs.StringVar(&h.Interval, "interval", "", "timer cadence (default: 60s)")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	fmt.Print(omen.RenderHostInit(h))
 	return nil
 }
 
-// unitCmd prints a systemd unit file. `--user X` (service only) injects
-// User=X and Group=X under [Service].
+// unitCmd handles `omen unit service|timer --config PATH`.
 func unitCmd(args []string) error {
 	if len(args) == 0 {
-		return fmt.Errorf("usage: omen unit [service|timer] [--user NAME]")
+		return fmt.Errorf("usage: omen unit [service|timer] --config PATH")
 	}
 	sub, args := args[0], args[1:]
 
 	fs := flag.NewFlagSet("omen unit", flag.ContinueOnError)
-	user := fs.String("user", "", "run the service as this user (only applies to 'service')")
+	cfg := fs.String("config", "", "path to host config (required)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
+	if *cfg == "" {
+		return fmt.Errorf("omen unit %s: --config is required", sub)
+	}
 
+	h, err := omen.LoadHost(*cfg)
+	if err != nil {
+		return err
+	}
+	name := instanceFromPath(*cfg)
+
+	var out string
 	switch sub {
 	case "service":
-		fmt.Print(serviceUnitWithUser(*user))
+		out, err = omen.RenderServiceUnit(h, name, *cfg)
 	case "timer":
-		if *user != "" {
-			return fmt.Errorf("--user does not apply to the timer unit")
-		}
-		fmt.Print(omen.TimerUnit)
+		out, err = omen.RenderTimerUnit(h, name)
 	default:
 		return fmt.Errorf("unknown unit %q (want service or timer)", sub)
 	}
-	return nil
-}
-
-// serviceUnitWithUser injects User=/Group= lines into the embedded service
-// template so the caller doesn't have to hand-edit before installing.
-func serviceUnitWithUser(user string) string {
-	if user == "" {
-		return omen.ServiceUnit
+	if err != nil {
+		return err
 	}
-	inject := fmt.Sprintf("[Service]\nUser=%s\nGroup=%s\n", user, user)
-	return strings.Replace(omen.ServiceUnit, "[Service]\n", inject, 1)
+	fmt.Print(out)
+	return nil
 }
 
 // instanceFromPath derives the instance name from a config path so

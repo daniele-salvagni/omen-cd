@@ -13,14 +13,16 @@ import (
 )
 
 // Host is the host-side config: what to sync and how.
-// It lives outside the repo (typically /etc/omen/<instance>.yaml) and is
+// It lives outside the repo (typically /etc/omen/<name>.yaml) and is
 // owned by the machine, not the git tree.
 type Host struct {
-	Repo   string `yaml:"repo"`
-	Dir    string `yaml:"dir"`
-	Branch string `yaml:"branch"`
-	Source string `yaml:"source"`
-	SSHKey string `yaml:"ssh_key"`
+	Repo     string `yaml:"repo"`
+	Dir      string `yaml:"dir"`
+	Branch   string `yaml:"branch"`
+	Source   string `yaml:"source"`
+	SSHKey   string `yaml:"ssh_key"`
+	User     string `yaml:"user"`
+	Interval string `yaml:"interval"`
 }
 
 // Spec is the in-repo config: what to run when the tracked branch advances.
@@ -55,6 +57,9 @@ func LoadHost(path string) (*Host, error) {
 	}
 	if h.Source == "" {
 		h.Source = ".omen.yaml"
+	}
+	if h.Interval == "" {
+		h.Interval = "60s"
 	}
 	return &h, nil
 }
